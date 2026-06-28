@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
+# Ubuntu 24.04 version — uses `jq` for JSON parsing and GNU `date`.
+#   sudo apt install -y jq      # jq is not preinstalled on Ubuntu
+# bash 5.x, GNU coreutils `date`, and (after the apt line) jq are all native to
+# 24.04. Reading rate limits via explicit jq paths makes this immune to schema
+# drift such as the later `context_window.used_percentage` addition.
 set -f
 
 input=$(cat)
 [ -z "$input" ] && { printf "Claude"; exit 0; }
 
 # ── Colors ──────────────────────────────────────────────
-# kamranahmedse theme
 c_dir='\033[38;2;0;153;255m'
 c_model='\033[38;2;230;200;0m'
 c_ctx='\033[38;2;86;182;194m'
@@ -48,9 +52,7 @@ build_bar() {
 
 fmt_tokens() {
     local n=$1
-    if [ "$n" -ge 1000000 ]; then
-        awk "BEGIN { printf \"%.1fm\", $n/1000000 }"
-    elif [ "$n" -ge 1000 ]; then
+    if [ "$n" -ge 1000 ]; then
         awk "BEGIN { printf \"%.0fk\", $n/1000 }"
     else
         printf "%d" "$n"
@@ -69,7 +71,7 @@ fmt_reset_7d() {
     date -d "@${epoch}" +"%b %-d, %-l:%M%P" 2>/dev/null | sed 's/^ //; s/  / /' | tr '[:upper:]' '[:lower:]'
 }
 
-# ── Extract data ────────────────────────────────────────
+# ── Extract data (explicit jq paths) ───────────────────
 model_name=$(jq -r '.model.display_name // "Claude"' <<< "$input")
 dirname=$(basename "$(jq -r '.cwd // ""' <<< "$input")")
 
